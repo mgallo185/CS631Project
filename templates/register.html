@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register</title>
+</head>
+<body>
+    <h1>Register</h1>
+    <form method="POST">
+        <label for="ssn">SSN</label>
+        <input type="text" name="ssn" required>
+        <br>
+        <label for="first_name">First Name</label>
+        <input type="text" name="first_name" required>
+        <br>
+        <label for="middle_name">Middle Name</label>
+        <input type="text" name="middle_name">
+        <br>
+        <label for="last_name">Last Name</label>
+        <input type="text" name="last_name" required>
+        <br>
+        <label for="phone">Phone</label>
+        <input type="text" name="phone" required>
+        <br>
+        <label for="password">Password</label>
+        <input type="password" name="password" required>
+        <br>
+        <button type="submit">Register</button>
+    </form>
+    <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+</body>
+</html>
