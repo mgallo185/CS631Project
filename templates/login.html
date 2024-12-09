@@ -4,18 +4,84 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            text-align: center;
+        }
+        h1 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #333;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        label {
+            text-align: left;
+            margin-bottom: 5px;
+            color: #555;
+        }
+        input {
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px;
+            background-color: #007BFF;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        p {
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        a {
+            color: #007BFF;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
-    <h1>Login</h1>
-    <form method="POST">
-        <label for="ssn">SSN</label>
-        <input type="text" name="ssn" required>
-        <br>
-        <label for="password">Password</label>
-        <input type="password" name="password" required>
-        <br>
-        <button type="submit">Login</button>
-    </form>
-    <p>Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
+    <div class="container">
+        <h1>Login</h1>
+        <form method="POST">
+            <label for="identifier">Email or SSN</label>
+            <input type="text" name="identifier" placeholder="Enter your Email or SSN" required>
+            
+            <label for="password">Password</label>
+            <input type="password" name="password" placeholder="Enter your password" required>
+            
+            <button type="submit">Login</button>
+        </form>
+        <p>Don't have an account? <a href="{{ url_for('register') }}">Register here</a></p>
+    </div>
 </body>
 </html>

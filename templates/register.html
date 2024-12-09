@@ -4,30 +4,120 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            background: #fff;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid #ddd;
+        }
+        h1 {
+            text-align: center;
+            color: #444;
+            margin-bottom: 2rem;
+        }
+        form {
+            width: 100%;
+        }
+        .form-group {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+        label {
+            flex: 1;
+            font-size: 1rem;
+            margin-right: 1rem;
+            text-align: right;
+            align-self: center;
+        }
+        input {
+            flex: 2;
+            padding: 0.8rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 100%;
+        }
+        input:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+        button {
+            display: block;
+            width: 50%;
+            margin: 2rem auto 0;
+            background-color: #007bff;
+            color: white;
+            padding: 0.8rem;
+            font-size: 1.2rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        p {
+            text-align: center;
+            font-size: 1rem;
+            margin-top: 1.5rem;
+        }
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
-    <h1>Register</h1>
-    <form method="POST">
-        <label for="ssn">SSN</label>
-        <input type="text" name="ssn" required>
-        <br>
-        <label for="first_name">First Name</label>
-        <input type="text" name="first_name" required>
-        <br>
-        <label for="middle_name">Middle Name</label>
-        <input type="text" name="middle_name">
-        <br>
-        <label for="last_name">Last Name</label>
-        <input type="text" name="last_name" required>
-        <br>
-        <label for="phone">Phone</label>
-        <input type="text" name="phone" required>
-        <br>
-        <label for="password">Password</label>
-        <input type="password" name="password" required>
-        <br>
-        <button type="submit">Register</button>
-    </form>
-    <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+    <div class="container">
+        <h1>Register</h1>
+        <form method="POST" action="{{ url_for('register') }}">
+            <div class="form-group">
+                <label for="ssn">SSN:</label>
+                <input type="text" name="ssn" placeholder="Enter your SSN" required>
+            </div>
+            <div class="form-group">
+                <label for="first_name">First Name:</label>
+                <input type="text" name="first_name" placeholder="Enter your first name" required>
+            </div>
+            <div class="form-group">
+                <label for="middle_name">Middle Name:</label>
+                <input type="text" name="middle_name" placeholder="Enter your middle name (optional)">
+            </div>
+            <div class="form-group">
+                <label for="last_name">Last Name:</label>
+                <input type="text" name="last_name" placeholder="Enter your last name" required>
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone:</label>
+                <input type="text" name="phone" placeholder="Enter your phone number" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" name="email" placeholder="Enter your email" required>
+            </div>
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" name="password" placeholder="Enter your password" required>
+            </div>
+            <button type="submit">Register</button>
+        </form>
+        <p>Already have an account? <a href="{{ url_for('login') }}">Login here</a></p>
+    </div>
 </body>
 </html>
