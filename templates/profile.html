@@ -13,9 +13,11 @@
         <!-- Flash messages -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div class="alert alert-{{ messages[0][0] }}">
-                    {{ messages[0][1] }}
-                </div>
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
             {% endif %}
         {% endwith %}
 
@@ -43,29 +45,62 @@
 
         <hr>
 
+     <!-- Add/Remove Email Addresses -->
+<h3>Your Email Addresses</h3>
+{% if current_user.emails %}
+    <ul class="list-group">
+        {% for email in current_user.emails %}
+            <li class="list-group-item">
+                {{ email }} 
+                <a href="{{ url_for('remove_email', email=email) }}" class="btn btn-danger btn-sm float-right ml-2" onclick="return confirm('Are you sure you want to remove this email?')">Remove</a>
+
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>You have no email addresses linked. <a href="{{ url_for('add_email') }}">Add an Email</a></p>
+{% endif %}
+
+<!-- Add Email Form -->
+<h4>Add Email Address</h4>
+<form method="POST" action="{{ url_for('add_email') }}">
+    <div class="form-group">
+        <input type="email" name="email" class="form-control" placeholder="Enter Email" required>
+    </div>
+    <button type="submit" class="btn btn-success">Add Email</button>
+</form>
+
+<hr>
+
+
+      
+
         <!-- Bank Account Section -->
-        <h3>Your Bank Accounts</h3>
-        {% if current_user.bank_accounts %}
-            <ul class="list-group">
-                {% for account in current_user.bank_accounts %}
-                    <li class="list-group-item">
-                        Account Number: {{ account.account_number }} - 
-                        {% if account.isVerified %}
-                            Verified
-                        {% else %}
-                            Not Verified
-                        {% endif %}
-                    </li>
-                {% endfor %}
-            </ul>
-        {% else %}
-            <p>You have no bank accounts linked. <a href="{{ url_for('add_bank_account') }}">Add a Bank Account</a></p>
-        {% endif %}
+       <!-- Bank Account Section -->
+     <!-- Bank Account Section -->
+<h3>Your Bank Accounts</h3>
+{% if current_user.bank_accounts %}
+    <ul class="list-group">
+        {% for account in current_user.bank_accounts %}
+            <li class="list-group-item">
+                Account Number: {{ account.account_number }}
+                <!-- Form to remove the account -->
+                <form action="{{ url_for('remove_bank_account') }}" method="POST" class="float-right ml-2">
+                    <input type="hidden" name="account_id" value="{{ account.id }}">
+                    <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+{% else %}
+    <p>You have no bank accounts linked.</p>
+{% endif %}
 
-        <!-- Add Bank Account Button -->
-        <a href="{{ url_for('add_bank_account') }}" class="btn btn-success mt-3">Add New Bank Account</a>
+<!-- Add Bank Account Button -->
+<h4>Add a Bank Account</h4>
+<a href="{{ url_for('add_bank_account') }}" class="btn btn-primary">Add Bank Account</a>
 
-        <hr>
+       <h>
         <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Back to Home</a>
 
         <a href="{{ url_for('logout') }}" class="btn btn-danger mt-3">Logout</a>

@@ -25,7 +25,8 @@ class User(UserMixin, db.Model):
     phone = db.Column(db.String(15))
     isVerified = db.Column(db.Boolean)
     password = db.Column(db.String(255))
-
+    
+    emails = db.relationship('Email', backref='user')
     def get_id(self):
         return str(self.SSN)
 
@@ -35,12 +36,12 @@ class Email(db.Model):
     ssn = db.Column(db.String(9), db.ForeignKey('user.SSN'))
     isVerified = db.Column(db.Boolean, default=False)
 
-    user = db.relationship('User', backref='emails')
+
 
 # Wallet Account model
 class WalletAccount(db.Model):
-    wallet_id = db.Column(db.Integer, primary_key=True)
-    SSN = db.Column(db.String(9), db.ForeignKey('user.SSN'))
+    wallet_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    SSN = db.Column(db.String(9), db.ForeignKey('user.SSN'), primary_key=True)
     balance = db.Column(db.Numeric(10, 2))
     isVerified = db.Column(db.Boolean)
     PIN = db.Column(db.String(4))
@@ -129,12 +130,14 @@ class RequestMoney(db.Model):
     transaction = db.relationship('Transaction', backref='request_money')
 
 # Ensure tables are created if they don't exist
+
 with app.app_context():
     db.create_all()
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -237,6 +240,50 @@ def profile():
 
     return render_template('profile.html')
 
+@app.route('/add_email', methods=['POST'])
+@login_required
+def add_email():
+    user = User.query.get(current_user.get_id())
+    email_address = request.form['email']
+    
+    # Check if email already exists
+    existing_email = Email.query.filter_by(email_address=email_address).first()
+    if existing_email:
+        flash("Email is already associated with another account!", "danger")
+        return redirect(url_for('profile'))
+
+    # Create new email entry
+    new_email = Email(email_address=email_address, ssn=user.SSN, isVerified=False)
+
+    # Add the email to the user's email list
+    db.session.add(new_email)
+    db.session.commit()
+
+    flash('Email added successfully!', 'success')
+    return redirect(url_for('profile'))
+
+
+@app.route('/remove_email/<email>', methods=['GET'])
+@login_required
+def remove_email(email):
+    email = email.strip().lower()  # Clean the email string (optional but good practice)
+    
+    # Ensure the email is in the current user's emails list
+    if email in current_user.emails:
+        current_user.emails.remove(email)
+        db.session.commit()  # Commit the changes to the database
+        flash('Email removed successfully!', 'success')
+    else:
+        flash('Email not found.', 'danger')
+    
+    # Redirect back to the profile page (or wherever you list the emails)
+    return redirect(url_for('profile'))
+
+
+
+
+
+
 @app.route('/add_bank_account', methods=['GET', 'POST'])
 def add_bank_account():
     if request.method == 'POST':
@@ -263,5 +310,22 @@ def add_bank_account():
         flash('Bank account added successfully!', 'success')
         return redirect(url_for('index'))  # Redirect to dashboard or another page after success
     return render_template('add_bank_account.html')
+
+@app.route('/remove_bank_account', methods=['POST'])
+@login_required
+def remove_bank_account():
+    # Get account id from the form or request
+    account_id = request.form['account_id']
+    
+    # Remove the bank account from the database or session
+    account_to_remove = BankAccount.query.get(account_id)
+    if account_to_remove and account_to_remove.user_id == current_user.id:
+        db.session.delete(account_to_remove)
+        db.session.commit()
+    
+    flash('Bank account removed successfully!', 'success')
+    return redirect(url_for('profile'))
+
+
 if __name__ == '__main__':
     app.run(debug=True)
