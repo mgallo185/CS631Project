@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Profile</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="text-center">Profile Page</h1>
+
+        <!-- Flash messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="alert alert-{{ messages[0][0] }}">
+                    {{ messages[0][1] }}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Profile Update Form -->
+        <form method="POST">
+            <h3>Update Profile Information</h3>
+            <div class="form-group">
+                <label for="first_name">First Name</label>
+                <input type="text" name="first_name" class="form-control" value="{{ current_user.first_name }}" required>
+            </div>
+            <div class="form-group">
+                <label for="middle_name">Middle Name</label>
+                <input type="text" name="middle_name" class="form-control" value="{{ current_user.middle_name }}">
+            </div>
+            <div class="form-group">
+                <label for="last_name">Last Name</label>
+                <input type="text" name="last_name" class="form-control" value="{{ current_user.last_name }}" required>
+            </div>
+            <div class="form-group">
+                <label for="phone">Phone</label>
+                <input type="text" name="phone" class="form-control" value="{{ current_user.phone }}" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Update Profile</button>
+        </form>
+
+        <hr>
+
+        <!-- Bank Account Section -->
+        <h3>Your Bank Accounts</h3>
+        {% if current_user.bank_accounts %}
+            <ul class="list-group">
+                {% for account in current_user.bank_accounts %}
+                    <li class="list-group-item">
+                        Account Number: {{ account.account_number }} - 
+                        {% if account.isVerified %}
+                            Verified
+                        {% else %}
+                            Not Verified
+                        {% endif %}
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <p>You have no bank accounts linked. <a href="{{ url_for('add_bank_account') }}">Add a Bank Account</a></p>
+        {% endif %}
+
+        <!-- Add Bank Account Button -->
+        <a href="{{ url_for('add_bank_account') }}" class="btn btn-success mt-3">Add New Bank Account</a>
+
+        <hr>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Back to Home</a>
+
+        <a href="{{ url_for('logout') }}" class="btn btn-danger mt-3">Logout</a>
+
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
