@@ -3,14 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User List</title>
+    <title>Wallet App</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .navbar {
+            background-color: #007BFF;
+            color: white;
+        }
+        .navbar-brand, .nav-link {
+            color: white !important;
+        }
+        .navbar-brand:hover, .nav-link:hover {
+            color: #f8f9fa !important;
+        }
+    </style>
 </head>
 <body>
-    <h1>List of Users</h1>
-    <ul>
-        {% for user in users %}
-            <li>{{ user.first_name }} {{ user.last_name }}</li>
-        {% endfor %}
-    </ul>
+    <!-- Navigation bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <a class="navbar-brand" href="{{ url_for('index') }}">Wallet App</a>
+        <div class="ml-auto">
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('profile') }}" class="btn btn-light btn-sm">Profile</a>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">Logout</a>
+            {% else %}
+                <a href="{{ url_for('register') }}" class="btn btn-primary btn-sm">Register</a>
+                <a href="{{ url_for('login') }}" class="btn btn-secondary btn-sm">Login</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <!-- Welcome message -->
+    <div class="container mt-5">
+        <h1 class="text-center">Welcome to the Wallet App</h1>
+        {% if current_user.is_authenticated %}
+            <p class="text-center">Hello, {{ current_user.first_name }}! Explore your dashboard below.</p>
+        {% else %}
+            <p class="text-center">Please log in or register to start using the Wallet App.</p>
+        {% endif %}
+    </div>
+
+    <!-- Optionally include Bootstrap JS for enhanced features -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 </body>
 </html>
