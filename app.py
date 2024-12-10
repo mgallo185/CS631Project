@@ -2,6 +2,7 @@ from flask import Flask, render_template, redirect, url_for, request, flash, ses
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
 
 
 
@@ -139,7 +140,14 @@ with app.app_context():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    wallet_balance = None  # Default to None if the user is not logged in
+
+    if current_user.is_authenticated:
+        # Fetch the wallet account for the logged-in user
+        wallet_account = WalletAccount.query.filter_by(SSN=current_user.SSN).first()
+        wallet_balance = wallet_account.balance if wallet_account else 0.00  # Default to 0.00 if no wallet exists
+
+    return render_template('index.html', wallet_balance=wallet_balance)
 
 
 @login_manager.user_loader
@@ -338,6 +346,115 @@ def remove_bank_account():
     
     flash('Bank account removed successfully!', 'success')
     return redirect(url_for('profile'))
+
+
+@app.route('/send_money', methods=['GET', 'POST'])
+@login_required
+def send_money():
+    if request.method == 'POST':
+        recipient_identifier = request.form['recipient']  # Can be email, phone, or wallet ID
+        amount = float(request.form['amount'])
+        sender_wallet = WalletAccount.query.filter_by(SSN=current_user.SSN).first()
+
+        if not sender_wallet:
+            flash("Sender wallet not found.", "danger")
+            return redirect(url_for('send_money'))
+
+        if sender_wallet.balance < amount:
+            flash("Insufficient balance to complete the transaction.", "danger")
+            return redirect(url_for('send_money'))
+
+        # Find recipient
+        recipient_user = None
+        if '@' in recipient_identifier:  # Check if it's an email
+            email_entry = Email.query.filter_by(email_address=recipient_identifier).first()
+            if email_entry:
+                recipient_user = User.query.filter_by(SSN=email_entry.ssn).first()
+        elif recipient_identifier.isdigit():  # Assume phone number
+            recipient_user = User.query.filter_by(phone=recipient_identifier).first()
+        else:  # Assume wallet ID
+            recipient_wallet = WalletAccount.query.filter_by(wallet_id=recipient_identifier).first()
+            if recipient_wallet:
+                recipient_user = User.query.filter_by(SSN=recipient_wallet.SSN).first()
+
+        if not recipient_user:
+            flash("Recipient not found.", "danger")
+            return redirect(url_for('send_money'))
+
+        # Get recipient wallet
+        recipient_wallet = WalletAccount.query.filter_by(SSN=recipient_user.SSN).first()
+
+        # Perform transfer
+        sender_wallet.balance -= amount
+        recipient_wallet.balance += amount
+
+        # Log transaction
+        transaction = Transaction(
+            sender_wallet_id_ssn=sender_wallet.SSN,
+            receiver_wallet_id_ssn=recipient_wallet.SSN,
+            initiation_timestamp=datetime.now(),
+            amount=amount,
+            memo=request.form.get('memo', ''),
+            status="Completed"
+        )
+        db.session.add(transaction)
+        db.session.commit()
+
+        flash(f"Sent ${amount} to {recipient_identifier} successfully!", "success")
+        return redirect(url_for('dashboard'))  # Redirect to dashboard or another relevant page
+
+    return render_template('send_money.html')
+
+
+
+@app.route('/request_money', methods=['GET', 'POST'])
+@login_required
+def request_money():
+    if request.method == 'POST':
+        recipients = request.form.getlist('recipients')  # List of recipient emails/phone numbers
+        amounts = request.form.getlist('amounts')  # List of corresponding amounts
+        memo = request.form.get('memo', '')  # Optional memo
+        expiration_date = request.form.get('expiration_date', None)  # Optional expiration date
+        
+        if not recipients or not amounts or len(recipients) != len(amounts):
+            flash("Invalid request data. Ensure recipients and amounts match.", "danger")
+            return redirect(url_for('request_money'))
+        
+        # Process each recipient
+        for i, recipient in enumerate(recipients):
+            amount = float(amounts[i])
+            is_new_user = not User.query.filter(
+                (User.SSN == recipient) | 
+                (Email.email_address == recipient) | 
+                (User.phone == recipient)
+            ).first()
+            
+            # Create a transaction
+            transaction = Transaction(
+                initiation_timestamp=datetime.now(),
+                amount=amount,
+                memo=memo,
+                status='Pending'
+            )
+            db.session.add(transaction)
+            db.session.commit()  # Commit to generate transaction_id
+            
+            # Create the money request
+            request_money = RequestMoney(
+                transaction_id=transaction.transaction_id,
+                requestees_phone_email=recipient,
+                amount=amount,
+                memo=memo,
+                expiration_date=expiration_date,
+                isNewUser=is_new_user
+            )
+            db.session.add(request_money)
+        
+        db.session.commit()
+        flash("Money requests sent successfully!", "success")
+        return redirect(url_for('dashboard'))  # Replace 'dashboard' with your app's main page
+    
+    return render_template('request_money.html')
 
 
 if __name__ == '__main__':
