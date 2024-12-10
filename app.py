@@ -335,18 +335,23 @@ def add_bank_account():
 @app.route('/remove_bank_account', methods=['POST'])
 @login_required
 def remove_bank_account():
-    # Get account id from the form or request
-    account_id = request.form['account_id']
-    
-    # Remove the bank account from the database or session
-    account_to_remove = BankAccount.query.get(account_id)
-    if account_to_remove and account_to_remove.user_id == current_user.id:
+    # Retrieve the composite primary key values from the form
+    bank_id = request.form['bank_id']
+    account_number = request.form['account_number']
+    ssn = current_user.SSN  # Assuming the SSN is associated with the logged-in user
+
+    # Find the bank account with the composite primary key
+    account_to_remove = BankAccount.query.get((bank_id, account_number, ssn))
+
+    if account_to_remove:
+        # Delete the account from the database
         db.session.delete(account_to_remove)
         db.session.commit()
-    
-    flash('Bank account removed successfully!', 'success')
-    return redirect(url_for('profile'))
+        flash('Bank account removed successfully!', 'success')
+    else:
+        flash('Bank account not found.', 'danger')
 
+    return redirect(url_for('profile'))
 
 @app.route('/send_money', methods=['GET', 'POST'])
 @login_required
