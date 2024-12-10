@@ -42,7 +42,14 @@
             <!-- Display wallet balance -->
             <div class="text-center mt-4">
                 <h3>Your Wallet Balance</h3>
-                <p class="text-primary font-weight-bold">${{ wallet_balance }}</p>
+                <p class="text-primary font-weight-bold">${{ "%.2f"|format(wallet_balance) }}</p>
+            </div>
+
+            <!-- Display wallet account ID and verification status -->
+            <div class="text-center mt-4">
+                <h4>Wallet Account Details</h4>
+                <p><strong>Account ID:</strong> {{ wallet_account.id }}</p>
+                <p><strong>Verified:</strong> {{ 'Yes' if wallet_account.isVerified else 'No' }}</p>
             </div>
 
             <!-- Option to send money or request money -->

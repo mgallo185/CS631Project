@@ -9,7 +9,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://songjiang:123456@34.42.219.23:3306/wallet'  # Replace with your credentials
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://mike:123456@34.42.219.23:3306/wallet'  # Replace with your credentials
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Disable modification tracking for performance
 app.secret_key = 'your_secret_key'  # Ensure you add a secret key for session management
 
@@ -141,14 +141,14 @@ with app.app_context():
 @app.route('/')
 def index():
     wallet_balance = None  # Default to None if the user is not logged in
+    wallet_account = None  # Default to None if the user is not logged in
 
     if current_user.is_authenticated:
         # Fetch the wallet account for the logged-in user
         wallet_account = WalletAccount.query.filter_by(SSN=current_user.SSN).first()
         wallet_balance = wallet_account.balance if wallet_account else 0.00  # Default to 0.00 if no wallet exists
 
-    return render_template('index.html', wallet_balance=wallet_balance)
-
+    return render_template('index.html', wallet_balance=wallet_balance, wallet_account=wallet_account)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -190,10 +190,17 @@ def register():
 
         # Create a new email entry
         new_email = Email(email_address=email_address, ssn=ssn, isVerified=False)
-
+        
+        new_wallet = WalletAccount(
+            SSN=ssn,
+            balance=0.00,  # Default balance is 0
+            isVerified=False,  # Default to not verified
+        )
+          
         # Add the user and email to the database
         db.session.add(new_user)
         db.session.add(new_email)
+        db.session.add(new_wallet)
         db.session.commit()
 
         flash("Registration successful! Please log in.", "success")
