@@ -1,0 +1,25 @@
+<form method="POST" action="{{ url_for('request_money') }}">
+    <div id="recipient-list">
+        <div class="recipient-entry">
+            <input type="text" name="recipients" placeholder="Recipient Email or Phone" required>
+            <input type="number" name="amounts" placeholder="Amount" required>
+        </div>
+    </div>
+    <button type="button" onclick="addRecipient()">Add Another Recipient</button>
+    <textarea name="memo" placeholder="Add a memo (optional)"></textarea>
+    <input type="date" name="expiration_date" placeholder="Expiration Date (optional)">
+    <button type="submit">Request Money</button>
+</form>
+
+<script>
+    function addRecipient() {
+        const recipientList = document.getElementById('recipient-list');
+        const newEntry = document.createElement('div');
+        newEntry.className = 'recipient-entry';
+        newEntry.innerHTML = `
+            <input type="text" name="recipients" placeholder="Recipient Email or Phone" required>
+            <input type="number" name="amounts" placeholder="Amount" required>
+        `;
+        recipientList.appendChild(newEntry);
+    }
+</script>

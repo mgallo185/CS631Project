@@ -1,0 +1,13 @@
+<form method="POST" action="{{ url_for('send_money') }}">
+    <label for="recipient">Recipient (Phone/Email/Wallet ID):</label>
+    <input type="text" name="recipient" id="recipient" required>
+
+    <label for="amount">Amount:</label>
+    <input type="number" name="amount" id="amount" step="0.01" required>
+
+    <label for="memo">Memo (Optional):</label>
+    <textarea name="memo" id="memo"></textarea>
+
+    <button type="submit">Send Money</button>
+</form>
+
