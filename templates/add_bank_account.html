@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Bank Account</title>
+</head>
+<body>
+    <h2>Add Your Bank Account</h2>
+
+    <form method="POST">
+        <div class="form-group">
+            <label for="bank_id">Select Bank:</label>
+            <select name="bank_id" id="bank_id" required>
+                <option value="" disabled selected>Select a Bank</option>
+                <!-- Bank Options -->
+                <option value="1">Chase</option>
+                <option value="2">TD Bank</option>
+                <option value="3">Wells Fargo</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="account_number">Bank Account Number:</label>
+            <input type="text" name="account_number" id="account_number" required>
+        </div>
+
+        <div class="form-group">
+            <label for="PIN">PIN (4 digits):</label>
+            <input type="text" name="PIN" id="PIN" maxlength="4" required>
+        </div>
+
+        <div class="form-group">
+            <label for="balance">Initial Balance:</label>
+            <input type="number" step="0.01" name="balance" id="balance" required>
+        </div>
+
+        <div class="form-group">
+            <label for="expiration_date">Expiration Date:</label>
+            <input type="date" name="expiration_date" id="expiration_date" required>
+        </div>
+
+        <!-- Hidden field to pass SSN from the session -->
+        <input type="hidden" name="SSN" value="{{ session['SSN'] }}">
+
+        <button type="submit">Add Bank Account</button>
+    </form>
+</body>
+</html>
