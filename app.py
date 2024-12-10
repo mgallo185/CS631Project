@@ -9,7 +9,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://mike:123456@34.42.219.23:3306/wallet'  # Replace with your credentials
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://songjiang:123456@34.42.219.23:3306/wallet'  # Replace with your credentials
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Disable modification tracking for performance
 app.secret_key = 'your_secret_key'  # Ensure you add a secret key for session management
 
@@ -45,12 +45,18 @@ class Email(db.Model):
 # Wallet Account model
 class WalletAccount(db.Model):
     wallet_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    SSN = db.Column(db.String(9), db.ForeignKey('user.SSN'), primary_key=True)
+    SSN = db.Column(db.String(9), db.ForeignKey('user.SSN'))
     balance = db.Column(db.Numeric(10, 2))
     isVerified = db.Column(db.Boolean)
     PIN = db.Column(db.String(4))
 
     user = db.relationship('User', backref='wallet_accounts')
+
+    @property
+    def wallet_id_formatted(self):
+        # Return a 10-digit wallet ID with leading zeros
+        return f'{self.wallet_id:010d}'
+
 
 # Bank Account model
 class BankAccount(db.Model):
@@ -137,7 +143,7 @@ class RequestMoney(db.Model):
 
 with app.app_context():
     db.create_all()
-
+    
 @app.route('/')
 def index():
     wallet_balance = None  # Default to None if the user is not logged in
@@ -153,7 +159,6 @@ def index():
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
-
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -191,22 +196,24 @@ def register():
         # Create a new email entry
         new_email = Email(email_address=email_address, ssn=ssn, isVerified=False)
         
+        # Create a new wallet account for the user
         new_wallet = WalletAccount(
             SSN=ssn,
             balance=0.00,  # Default balance is 0
             isVerified=False,  # Default to not verified
         )
-          
-        # Add the user and email to the database
+
+        # Add the user, email, and wallet to the database
         db.session.add(new_user)
         db.session.add(new_email)
         db.session.add(new_wallet)
         db.session.commit()
 
-        flash("Registration successful! Please log in.", "success")
+        flash(f"Registration successful! Your wallet ID is {new_wallet.wallet_id_formatted}. Please log in.", "success")
         return redirect(url_for('login'))
 
     return render_template('register.html')
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
