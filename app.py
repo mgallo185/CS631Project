@@ -3,9 +3,12 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 
+
+
+
 app = Flask(__name__)
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:Dragonba!!1227@localhost/WALLET_APP'  # Replace with your credentials
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://songjiang:123456@34.42.219.23:3306/wallet'  # Replace with your credentials
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Disable modification tracking for performance
 app.secret_key = 'your_secret_key'  # Ensure you add a secret key for session management
 
@@ -266,21 +269,31 @@ def add_email():
 @app.route('/remove_email/<email>', methods=['GET'])
 @login_required
 def remove_email(email):
-    email = email.strip().lower()  # Clean the email string (optional but good practice)
-    
-    # Ensure the email is in the current user's emails list
-    if email in current_user.emails:
-        current_user.emails.remove(email)
-        db.session.commit()  # Commit the changes to the database
-        flash('Email removed successfully!', 'success')
+    # Clean and preprocess the email string
+    email = email.strip().lower()
+    if email.startswith('<email '):  # Remove '<email ' prefix if present
+        email = email.replace('<email ', '').rstrip('>')  # Remove '>'
+
+    print("Email to remove:", email)
+
+    # Extract the actual email addresses from the user's emails
+    user_emails = [e.email_address.strip().lower() for e in current_user.emails]
+    print("Current user's emails:", user_emails)
+
+    # Check if the email exists in the user's email list
+    if email in user_emails:
+        # Retrieve the corresponding Email object to delete
+        email_obj = next((e for e in current_user.emails if e.email_address.strip().lower() == email), None)
+        if email_obj:
+            db.session.delete(email_obj)  # Remove from the database
+            db.session.commit()  # Commit the changes
+            flash('Email removed successfully!', 'success')
+        else:
+            flash('Email object not found.', 'danger')
     else:
         flash('Email not found.', 'danger')
     
-    # Redirect back to the profile page (or wherever you list the emails)
     return redirect(url_for('profile'))
-
-
-
 
 
 
