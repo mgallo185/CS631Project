@@ -78,37 +78,46 @@
         <!-- Bank Account Section -->
        <!-- Bank Account Section -->
      <!-- Bank Account Section -->
-<h3>Your Bank Accounts</h3>
-{% if current_user.bank_accounts %}
-    <ul class="list-group">
-        {% for account in current_user.bank_accounts %}
-            <li class="list-group-item">
-                Account Number: {{ account.account_number }}
-                <!-- Form to remove the account -->
-                <form action="{{ url_for('remove_bank_account') }}" method="POST" class="float-right ml-2">
-                    <input type="hidden" name="account_id" value="{{ account.id }}">
-                    <button type="submit" class="btn btn-danger btn-sm">Remove</button>
-                </form>
-            </li>
-        {% endfor %}
-    </ul>
-{% else %}
-    <p>You have no bank accounts linked.</p>
-{% endif %}
 
-<!-- Add Bank Account Button -->
-<h4>Add a Bank Account</h4>
-<a href="{{ url_for('add_bank_account') }}" class="btn btn-primary">Add Bank Account</a>
-
-       <h>
+    <div class="container mt-5">
+        <h4>Manage Bank Accounts</h4>
+        
+        <table class="table table-bordered mt-3">
+            <thead>
+                <tr>
+                    <th>Bank ID</th>
+                    <th>Account Number</th>
+                    <th>Balance</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for account in current_user.bank_accounts %}
+                <tr>
+                    <td>{{ account.bank_id }}</td>
+                    <td>{{ account.account_number }}</td>
+                    <td>{{ account.balance }}</td>
+                    <td>
+                        <!-- Add a POST form for removing the bank account -->
+                        <form method="POST" action="{{ url_for('remove_bank_account') }}" style="display:inline;">
+                            <input type="hidden" name="bank_id" value="{{ account.bank_id }}">
+                            <input type="hidden" name="account_number" value="{{ account.account_number }}">
+                            <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    
+        <a href="{{ url_for('add_bank_account') }}" class="btn btn-primary mt-3">Add Bank Account</a>
         <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Back to Home</a>
-
         <a href="{{ url_for('logout') }}" class="btn btn-danger mt-3">Logout</a>
-
     </div>
-
+    
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.3/dist/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    
 </body>
 </html>
