@@ -22,9 +22,6 @@
     </form>
     
     {% if total_sent is not none %}
-        <h2>Total Amount Sent/Received</h2>
-        <p>Total Sent: {{ total_sent if total_sent else '0.00' }}</p>
-        <p>Total Received: {{ total_received if total_received else '0.00' }}</p>
         {% if results %}
         <h2>Monthly Breakdown for {{ user_ssn }}</h2>
         <table border="1">
@@ -53,28 +50,7 @@
         <p>No data available for the specified user and date range.</p>
     {% endif %}
     
-        <h2>Transaction with Maximum Amount</h2>
-        {% if max_transactions and max_transactions.transaction_id %}
-            <p>Transaction ID: {{ max_transactions.transaction_id }}</p>
-            <p>Amount: {{ max_transactions.amount }}</p>
-            <p>Date: {{ max_transactions.initiation_timestamp }}</p>
-        {% else %}
-            <p>No transactions found in the specified range.</p>
-        {% endif %}
-        
-        <h2>Best Users by Total Sent</h2>
-        <ul>
-            {% for user in best_users_sent %}
-                <li>User SSN: {{ user.SSN }} - Total Sent: {{ user.total_sent }}</li>
-            {% endfor %}
-        </ul>
-        
-        <h2>Best Users by Total Received</h2>
-        <ul>
-            {% for user in best_users_received %}
-                <li>User SSN: {{ user.SSN }} - Total Received: {{ user.total_received }}</li>
-            {% endfor %}
-        </ul>
+       
     {% endif %}
 </body>
 </html>
