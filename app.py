@@ -10,8 +10,11 @@ from decimal import Decimal
 
 app = Flask(__name__)
 
-# Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+mysqldb://songjiang:2$si4afA|y9>R7.d@34.42.219.23:3306/wallet?ssl_ca=cert/server-ca.pem&ssl_cert=cert/client-cert.pem&ssl_key=cert/client-key.pem'  # Include SSL parameters
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    'mysql+mysqldb://mike:5XK#BCSxZ\'(6Do5L@34.42.219.23:3306/wallet'
+    '?ssl_ca=cert/server-ca.pem&ssl_cert=cert/client-cert.pem&ssl_key=cert/client-key.pem'
+)
+# Replace with your credentials
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False  # Disable modification tracking for performance
 app.secret_key = 'your_secret_key'  # Ensure you add a secret key for session management
 
