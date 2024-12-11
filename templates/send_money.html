@@ -1,4 +1,4 @@
-<form method="POST" action="{{ url_for('send_money') }}">
+<form method="POST" action="{{ url_for('send_money') }}" onsubmit="return validateForm()">
     <label for="recipient">Recipient (Phone/Email/Wallet ID):</label>
     <input type="text" name="recipient" id="recipient" required>
 
@@ -11,3 +11,20 @@
     <button type="submit">Send Money</button>
 </form>
 
+<!-- JavaScript for front-end validation -->
+<script>
+    function validateForm() {
+        // Get the amount from the input field
+        var amount = document.getElementById("amount").value;
+
+        // Check if the amount is a positive number
+        if (amount <= 0) {
+            alert("Amount must be greater than 0.");
+            return false; // Prevent form submission
+        }
+
+        // Optional: Check that the amount does not exceed the sender's balance (can be done dynamically via AJAX, if needed)
+
+        return true; // Allow form submission
+    }
+</script>

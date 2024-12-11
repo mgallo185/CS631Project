@@ -373,7 +373,7 @@ def remove_bank_account():
 def send_money():
     if request.method == 'POST':
         recipient_identifier = request.form['recipient']  # Can be email, phone, or wallet ID
-        amount = float(request.form['amount'])
+        amount = Decimal(request.form['amount'])  # Convert to Decimal for precise handling
         sender_wallet = WalletAccount.query.filter_by(SSN=current_user.SSN).first()
 
         if not sender_wallet:
@@ -404,28 +404,54 @@ def send_money():
         # Get recipient wallet
         recipient_wallet = WalletAccount.query.filter_by(SSN=recipient_user.SSN).first()
 
-        # Perform transfer
-        sender_wallet.balance -= amount
-        recipient_wallet.balance += amount
+        # Perform transfer (debit sender wallet, credit recipient wallet)
+        sender_wallet.balance -= amount  # Now sender_wallet.balance is a Decimal, so it works
+        recipient_wallet.balance += amount  # Similarly, recipient_wallet.balance is a Decimal
 
-        # Log transaction
+        # Create transaction log
         transaction = Transaction(
             sender_wallet_id_ssn=sender_wallet.SSN,
             receiver_wallet_id_ssn=recipient_wallet.SSN,
             initiation_timestamp=datetime.now(),
             amount=amount,
-            memo=request.form.get('memo', ''),
+            memo=request.form.get('memo', ''),  # Memo is optional
             status="Completed"
         )
         db.session.add(transaction)
         db.session.commit()
 
+        # Create monthly statement for sender
+        sender_statement = MonthlyStatement(
+            wallet_id=sender_wallet.wallet_id,
+            transaction_id=transaction.transaction_id,
+            For_Month_Year=datetime.now(),
+            starting_balance=sender_wallet.balance + amount,  # Starting balance before transaction
+            total_amount_sent=amount,
+            total_amount_received=0,
+            net_change=-amount,
+            ending_balance=sender_wallet.balance
+        )
+        db.session.add(sender_statement)
+
+        # Create monthly statement for recipient
+        recipient_statement = MonthlyStatement(
+            wallet_id=recipient_wallet.wallet_id,
+            transaction_id=transaction.transaction_id,
+            For_Month_Year=datetime.now(),
+            starting_balance=recipient_wallet.balance - amount,  # Starting balance before transaction
+            total_amount_sent=0,
+            total_amount_received=amount,
+            net_change=amount,
+            ending_balance=recipient_wallet.balance
+        )
+        db.session.add(recipient_statement)
+
+        db.session.commit()
+
         flash(f"Sent ${amount} to {recipient_identifier} successfully!", "success")
-        return redirect(url_for('dashboard'))  # Redirect to dashboard or another relevant page
+        return redirect(url_for('index'))  # Redirect to dashboard or another relevant page
 
     return render_template('send_money.html')
-
-
 
 @app.route('/request_money', methods=['GET', 'POST'])
 @login_required
@@ -481,7 +507,8 @@ def request_money():
 @login_required
 def verify_bank_account(bank_id):
     # Retrieve the bank account
-    bank_account = BankAccount.query.filter_by(id=bank_id, user_id=current_user.id).first()
+    bank_account = BankAccount.query.filter_by(bank_id=bank_id, ssn=current_user.SSN).first()
+
 
     # Check if the bank account exists
     if not bank_account:
