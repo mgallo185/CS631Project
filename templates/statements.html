@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statements</title>
+</head>
+<body>
+    <h1>User Statements</h1>
+    
+    <form method="POST">
+        <label for="ssn">SSN: </label>
+        <input type="text" id="ssn" name="ssn" required>
+        
+        <label for="start_date">Start Date: </label>
+        <input type="date" id="start_date" name="start_date">
+        
+        <label for="end_date">End Date: </label>
+        <input type="date" id="end_date" name="end_date">
+        
+        <button type="submit">Generate Statement</button>
+    </form>
+    
+    {% if total_sent is not none %}
+        <h2>Total Amount Sent/Received</h2>
+        <p>Total Sent: {{ total_sent if total_sent else '0.00' }}</p>
+        <p>Total Received: {{ total_received if total_received else '0.00' }}</p>
+        
+        <h2>Average Sent/Received per Month</h2>
+        <p>Monthly Average Sent: {{ monthly_avg_sent if monthly_avg_sent else '0.00' }}</p>
+        <p>Monthly Average Received: {{ monthly_avg_received if monthly_avg_received else '0.00' }}</p>
+        
+        <h2>Transaction with Maximum Amount</h2>
+        {% if max_transactions and max_transactions.transaction_id %}
+            <p>Transaction ID: {{ max_transactions.transaction_id }}</p>
+            <p>Amount: {{ max_transactions.amount }}</p>
+            <p>Date: {{ max_transactions.initiation_timestamp }}</p>
+        {% else %}
+            <p>No transactions found in the specified range.</p>
+        {% endif %}
+        
+        <h2>Best Users by Total Sent</h2>
+        <ul>
+            {% for user in best_users_sent %}
+                <li>User SSN: {{ user.SSN }} - Total Sent: {{ user.total_sent }}</li>
+            {% endfor %}
+        </ul>
+        
+        <h2>Best Users by Total Received</h2>
+        <ul>
+            {% for user in best_users_received %}
+                <li>User SSN: {{ user.SSN }} - Total Received: {{ user.total_received }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+</body>
+</html>
