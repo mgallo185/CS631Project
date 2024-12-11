@@ -661,13 +661,11 @@ def transfer_money_to_wallet():
 @app.route('/search_transactions', methods=['GET', 'POST'])
 @login_required
 def search_transactions():
-    # Default filters: All transactions for the logged-in user's SSN
     transactions = Transaction.query.filter(
         (Transaction.sender_wallet_id_ssn == current_user.SSN) | 
         (Transaction.receiver_wallet_id_ssn == current_user.SSN)
     )
     
-    # Apply additional filters if provided
     if request.method == 'POST':
         transaction_type = request.form.get('transaction_type')
         start_date = request.form.get('start_date')
@@ -675,21 +673,19 @@ def search_transactions():
         amount_min = request.form.get('amount_min')
         amount_max = request.form.get('amount_max')
         ssn_filter = request.form.get('ssn_filter')  # Get SSN filter from form
+        email_phone = request.form.get('email_phone')  # Get Email/Phone filter from form
 
-        # Filter by transaction type
         if transaction_type:
             if transaction_type == "sent":
                 transactions = transactions.filter(Transaction.sender_wallet_id_ssn == current_user.SSN)
             elif transaction_type == "received":
                 transactions = transactions.filter(Transaction.receiver_wallet_id_ssn == current_user.SSN)
 
-        # Filter by date range
         if start_date:
             transactions = transactions.filter(Transaction.initiation_timestamp >= datetime.strptime(start_date, '%Y-%m-%d'))
         if end_date:
             transactions = transactions.filter(Transaction.initiation_timestamp <= datetime.strptime(end_date, '%Y-%m-%d'))
 
-        # Filter by amount range
         if amount_min:
             transactions = transactions.filter(Transaction.amount >= Decimal(amount_min))
         if amount_max:
@@ -702,7 +698,16 @@ def search_transactions():
                 (Transaction.receiver_wallet_id_ssn == ssn_filter)
             )
 
-    transactions = transactions.all()  # Execute the query
+        # Filter by Email or Phone (if provided)
+        if email_phone:
+            transactions = transactions.filter(
+                (Transaction.sender_wallet.email == email_phone) | 
+                (Transaction.receiver_wallet.email == email_phone) |
+                (Transaction.sender_wallet.phone_number == email_phone) |
+                (Transaction.receiver_wallet.phone_number == email_phone)
+            )
+
+    transactions = transactions.all()
     return render_template('search_transactions.html', transactions=transactions)
 
 if __name__ == '__main__':
