@@ -3,7 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
-
+from flask import jsonify
 from decimal import Decimal
 
 
@@ -113,7 +113,7 @@ class MonthlyStatement(db.Model):
 
 # Transaction model
 class Transaction(db.Model):
-    transaction_id = db.Column(db.Integer, primary_key=True)
+    transaction_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     sender_wallet_id_ssn = db.Column(db.String(9), db.ForeignKey('wallet_account.SSN'))
     receiver_wallet_id_ssn = db.Column(db.String(9), db.ForeignKey('wallet_account.SSN'))
     initiation_timestamp = db.Column(db.DateTime)
@@ -424,14 +424,16 @@ def send_money():
             status="Completed"
         )
         db.session.add(transaction)
+        db.session.commit()
 
         # Record the send_money transaction
         send_money_record = SendMoney(
-            transaction_id=transaction.transaction_id,
+            transaction_id=transaction.transaction_id,  
             recipient_phone_email=recipient_identifier,
-            cancellation_reason=None,  # Initially, no cancellation
-            cancellation_timestamp=None  # Initially, no cancellation
+            cancellation_reason=None,
+            cancellation_timestamp=None
         )
+
         db.session.add(send_money_record)
 
         # Create monthly statement for sender
@@ -653,6 +655,48 @@ def transfer_money_to_wallet():
 
     # If it's a GET request, render the page with the form
     return render_template('profile.html')
+
+
+
+@app.route('/search_transactions', methods=['GET', 'POST'])
+@login_required
+def search_transactions():
+    # Default filters: All transactions for the logged-in user's SSN
+    transactions = Transaction.query.filter(
+        (Transaction.sender_wallet_id_ssn == current_user.SSN) | 
+        (Transaction.receiver_wallet_id_ssn == current_user.SSN)
+    )
+    
+    # Apply additional filters if provided
+    if request.method == 'POST':
+        transaction_type = request.form.get('transaction_type')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        amount_min = request.form.get('amount_min')
+        amount_max = request.form.get('amount_max')
+
+        # Filter by transaction type
+        if transaction_type:
+            if transaction_type == "sent":
+                transactions = transactions.filter(Transaction.sender_wallet_id_ssn == current_user.SSN)
+            elif transaction_type == "received":
+                transactions = transactions.filter(Transaction.receiver_wallet_id_ssn == current_user.SSN)
+
+        # Filter by date range
+        if start_date:
+            transactions = transactions.filter(Transaction.initiation_timestamp >= datetime.strptime(start_date, '%Y-%m-%d'))
+        if end_date:
+            transactions = transactions.filter(Transaction.initiation_timestamp <= datetime.strptime(end_date, '%Y-%m-%d'))
+
+        # Filter by amount range
+        if amount_min:
+            transactions = transactions.filter(Transaction.amount >= Decimal(amount_min))
+        if amount_max:
+            transactions = transactions.filter(Transaction.amount <= Decimal(amount_max))
+
+    transactions = transactions.all()  # Execute the query
+    return render_template('search_transactions.html', transactions=transactions)
+
 
 if __name__ == '__main__':
     app.run(debug=True)

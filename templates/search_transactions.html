@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Transactions</title>
+</head>
+<body>
+    <h1>Search Transactions</h1>
+    <form method="POST">
+        <label for="transaction_type">Transaction Type:</label>
+        <select name="transaction_type" id="transaction_type">
+            <option value="">All</option>
+            <option value="sent">Sent</option>
+            <option value="received">Received</option>
+        </select><br>
+
+        <label for="start_date">Start Date:</label>
+        <input type="date" name="start_date" id="start_date"><br>
+
+        <label for="end_date">End Date:</label>
+        <input type="date" name="end_date" id="end_date"><br>
+
+        <label for="amount_min">Min Amount:</label>
+        <input type="number" name="amount_min" step="0.01"><br>
+
+        <label for="amount_max">Max Amount:</label>
+        <input type="number" name="amount_max" step="0.01"><br>
+
+        <button type="submit">Search</button>
+    </form>
+
+    <h2>Transaction Results</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Transaction ID</th>
+                <th>Sender</th>
+                <th>Receiver</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for transaction in transactions %}
+            <tr>
+                <td>{{ transaction.transaction_id }}</td>
+                <td>{{ transaction.sender_wallet_id_ssn }}</td>
+                <td>{{ transaction.receiver_wallet_id_ssn }}</td>
+                <td>{{ transaction.amount }}</td>
+                <td>{{ transaction.status }}</td>
+                <td>{{ transaction.initiation_timestamp }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>
