@@ -373,9 +373,9 @@ def remove_bank_account():
 def send_money():
     if request.method == 'POST':
         recipient_identifier = request.form['recipient']  # Can be email, phone, or wallet ID
-        # Resolved version:
         amount = Decimal(request.form['amount'])  # Convert to Decimal for precise handling
 
+        # Get sender wallet
         sender_wallet = WalletAccount.query.filter_by(SSN=current_user.SSN).first()
 
         if not sender_wallet:
@@ -403,14 +403,12 @@ def send_money():
             flash("Recipient not found.", "danger")
             return redirect(url_for('send_money'))
 
-        # Get recipient wallet
+        # Get recipient wallet (already handled by the previous check)
         recipient_wallet = WalletAccount.query.filter_by(SSN=recipient_user.SSN).first()
 
-    # Perform transfer (debit sender wallet, credit recipient wallet)
-# Ensure both amounts are Decimal; sender_wallet.balance and recipient_wallet.balance are Decimal
+        # Perform transfer (debit sender wallet, credit recipient wallet)
         sender_wallet.balance -= amount
         recipient_wallet.balance += amount
-
 
         # Create transaction log
         transaction = Transaction(
@@ -422,56 +420,56 @@ def send_money():
             status="Completed"
         )
         db.session.add(transaction)
-        db.session.commit()
 
-# Record the send_money transaction
-send_money_record = SendMoney(
-    transaction_id=transaction.transaction_id,
-    recipient_phone_email=recipient_identifier,
-    cancellation_reason=None,  # Initially, no cancellation
-    cancellation_timestamp=None  # Initially, no cancellation
-)
-db.session.add(send_money_record)
+        # Record the send_money transaction
+        send_money_record = SendMoney(
+            transaction_id=transaction.transaction_id,
+            recipient_phone_email=recipient_identifier,
+            cancellation_reason=None,  # Initially, no cancellation
+            cancellation_timestamp=None  # Initially, no cancellation
+        )
+        db.session.add(send_money_record)
 
-# Create monthly statement for sender
-sender_statement = MonthlyStatement(
-    wallet_id=sender_wallet.wallet_id,
-    transaction_id=transaction.transaction_id,
-    For_Month_Year=datetime.now(),
-    starting_balance=sender_wallet.balance + amount,  # Starting balance before transaction
-    total_amount_sent=amount,
-    total_amount_received=0,
-    net_change=-amount,
-    ending_balance=sender_wallet.balance
-)
-db.session.add(sender_statement)
+        # Create monthly statement for sender
+        sender_statement = MonthlyStatement(
+            wallet_id=sender_wallet.wallet_id,
+            transaction_id=transaction.transaction_id,
+            For_Month_Year=datetime.now(),
+            starting_balance=sender_wallet.balance + amount,  # Starting balance before transaction
+            total_amount_sent=amount,
+            total_amount_received=0,
+            net_change=-amount,
+            ending_balance=sender_wallet.balance
+        )
+        db.session.add(sender_statement)
 
-# Create monthly statement for recipient
-recipient_statement = MonthlyStatement(
-    wallet_id=recipient_wallet.wallet_id,
-    transaction_id=transaction.transaction_id,
-    For_Month_Year=datetime.now(),
-    starting_balance=recipient_wallet.balance - amount,  # Starting balance before transaction
-    total_amount_sent=0,
-    total_amount_received=amount,
-    net_change=amount,
-    ending_balance=recipient_wallet.balance
-)
-db.session.add(recipient_statement)
+        # Create monthly statement for recipient
+        recipient_statement = MonthlyStatement(
+            wallet_id=recipient_wallet.wallet_id,
+            transaction_id=transaction.transaction_id,
+            For_Month_Year=datetime.now(),
+            starting_balance=recipient_wallet.balance - amount,  # Starting balance before transaction
+            total_amount_sent=0,
+            total_amount_received=amount,
+            net_change=amount,
+            ending_balance=recipient_wallet.balance
+        )
+        db.session.add(recipient_statement)
 
-# Commit all changes
-db.session.commit()
-
-flash(f"Sent ${amount} to {recipient_identifier} successfully!", "success")
-return redirect(url_for('index'))  # Redirect to dashboard or another relevant page
-
-
-        db.session.commit()
+        # Commit all changes
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()  # Rollback on error
+            flash(f"Error processing transaction: {str(e)}", "danger")
+            return redirect(url_for('send_money'))
 
         flash(f"Sent ${amount} to {recipient_identifier} successfully!", "success")
         return redirect(url_for('index'))  # Redirect to dashboard or another relevant page
 
     return render_template('send_money.html')
+
+
 
 @app.route('/request_money', methods=['GET', 'POST'])
 @login_required
