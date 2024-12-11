@@ -674,6 +674,7 @@ def search_transactions():
         end_date = request.form.get('end_date')
         amount_min = request.form.get('amount_min')
         amount_max = request.form.get('amount_max')
+        ssn_filter = request.form.get('ssn_filter')  # Get SSN filter from form
 
         # Filter by transaction type
         if transaction_type:
@@ -694,9 +695,15 @@ def search_transactions():
         if amount_max:
             transactions = transactions.filter(Transaction.amount <= Decimal(amount_max))
 
+        # Filter by SSN (if provided)
+        if ssn_filter:
+            transactions = transactions.filter(
+                (Transaction.sender_wallet_id_ssn == ssn_filter) | 
+                (Transaction.receiver_wallet_id_ssn == ssn_filter)
+            )
+
     transactions = transactions.all()  # Execute the query
     return render_template('search_transactions.html', transactions=transactions)
-
 
 if __name__ == '__main__':
     app.run(debug=True)
