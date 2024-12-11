@@ -373,7 +373,7 @@ def remove_bank_account():
 def send_money():
     if request.method == 'POST':
         recipient_identifier = request.form['recipient']  # Can be email, phone, or wallet ID
-        amount = float(request.form['amount'])
+        amount = Decimal(request.form['amount'])  # Convert amount to Decimal
         sender_wallet = WalletAccount.query.filter_by(SSN=current_user.SSN).first()
 
         if not sender_wallet:
@@ -404,7 +404,7 @@ def send_money():
         # Get recipient wallet
         recipient_wallet = WalletAccount.query.filter_by(SSN=recipient_user.SSN).first()
 
-        # Perform transfer
+        # Perform transfer (ensure both amounts are Decimal)
         sender_wallet.balance -= amount
         recipient_wallet.balance += amount
 
@@ -420,8 +420,18 @@ def send_money():
         db.session.add(transaction)
         db.session.commit()
 
+        # Record the send_money transaction
+        send_money_record = SendMoney(
+            transaction_id=transaction.transaction_id,
+            recipient_phone_email=recipient_identifier,
+            cancellation_reason=None,  # Initially, no cancellation
+            cancellation_timestamp=None  # Initially, no cancellation
+        )
+        db.session.add(send_money_record)
+        db.session.commit()
+
         flash(f"Sent ${amount} to {recipient_identifier} successfully!", "success")
-        return redirect(url_for('dashboard'))  # Redirect to dashboard or another relevant page
+        return redirect(url_for('index'))  # Redirect to dashboard or another relevant page
 
     return render_template('send_money.html')
 
