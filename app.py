@@ -674,6 +674,7 @@ def search_transactions():
         end_date = request.form.get('end_date')
         amount_min = request.form.get('amount_min')
         amount_max = request.form.get('amount_max')
+        search_email_phone = request.form.get('email_phone')  # Email or phone input
 
         # Filter by transaction type
         if transaction_type:
@@ -694,9 +695,17 @@ def search_transactions():
         if amount_max:
             transactions = transactions.filter(Transaction.amount <= Decimal(amount_max))
 
+        # Filter by email or phone number
+        if search_email_phone:
+            transactions = transactions.join(WalletAccount, WalletAccount.SSN == Transaction.sender_wallet_id_ssn)\
+                                       .join(User, User.SSN == WalletAccount.SSN)\
+                                       .filter(
+                                           (User.phone.like(f'%{search_email_phone}%')) | 
+                                           (Email.email_address.like(f'%{search_email_phone}%'))
+                                       )
+    
     transactions = transactions.all()  # Execute the query
     return render_template('search_transactions.html', transactions=transactions)
-
 
 if __name__ == '__main__':
     app.run(debug=True)
