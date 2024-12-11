@@ -133,7 +133,7 @@ class SendMoney(db.Model):
 # Request Money model
 class RequestMoney(db.Model):
     transaction_id = db.Column(db.Integer, db.ForeignKey('transaction.transaction_id'), primary_key=True)
-    request_id = db.Column(db.Integer)
+    request_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     requestees_phone_email = db.Column(db.String(255))
     expiration_date = db.Column(db.Date)
     isNewUser = db.Column(db.Boolean)
@@ -441,50 +441,81 @@ def send_money():
 @login_required
 def request_money():
     if request.method == 'POST':
-        recipients = request.form.getlist('recipients')  # List of recipient emails/phone numbers
-        amounts = request.form.getlist('amounts')  # List of corresponding amounts
+        recipients = request.form.getlist('recipients[]')  # List of recipient emails/phone numbers
+        amounts = request.form.getlist('amounts[]')  # List of corresponding amounts
         memo = request.form.get('memo', '')  # Optional memo
         expiration_date = request.form.get('expiration_date', None)  # Optional expiration date
-        
+
         if not recipients or not amounts or len(recipients) != len(amounts):
             flash("Invalid request data. Ensure recipients and amounts match.", "danger")
             return redirect(url_for('request_money'))
-        
+
+        total_requested = sum(Decimal(amount) for amount in amounts)  # Ensure total amounts are correct
+
         # Process each recipient
         for i, recipient in enumerate(recipients):
-            amount = float(amounts[i])
+            amount = Decimal(amounts[i])  # Convert to Decimal for consistency
             is_new_user = not User.query.filter(
                 (User.SSN == recipient) | 
                 (Email.email_address == recipient) | 
                 (User.phone == recipient)
-            ).first()
-            
-            # Create a transaction
+            ).first()  # Check if recipient exists
+
+            # Log recipient identifier and lookup result for debugging
+            print(f"Recipient: {recipient}")
+
+            # Look up the recipient user
+            recipient_user = None
+            if '@' in recipient:  # Check if it's an email
+                recipient_user = User.query.join(Email).filter(Email.email_address == recipient).first()
+            elif recipient.isdigit():  # Assume phone number
+                recipient_user = User.query.filter_by(phone=recipient).first()
+            else:  # Assume SSN or wallet ID
+                recipient_user = User.query.filter_by(SSN=recipient).first()
+
+            if not recipient_user:
+                flash(f"Recipient {recipient} not found.", "danger")
+                return redirect(url_for('request_money'))
+
+            # Get recipient wallet using their SSN
+            recipient_wallet = WalletAccount.query.filter_by(SSN=recipient_user.SSN).first()
+
+            if not recipient_wallet:
+                flash("Recipient wallet not found.", "danger")
+                return redirect(url_for('request_money'))
+
+            # Create the transaction (request)
+            sender_wallet = WalletAccount.query.filter_by(SSN=current_user.SSN).first()
+            if not sender_wallet:
+                flash("Sender wallet not found.", "danger")
+                return redirect(url_for('request_money'))
+
             transaction = Transaction(
+                sender_wallet_id_ssn=sender_wallet.SSN,
+                receiver_wallet_id_ssn=recipient_wallet.SSN,
                 initiation_timestamp=datetime.now(),
                 amount=amount,
                 memo=memo,
-                status='Pending'
+                status='Pending'  # The transaction is pending until the recipient accepts or declines
             )
             db.session.add(transaction)
             db.session.commit()  # Commit to generate transaction_id
-            
-            # Create the money request
+
+            # Create the money request (link to transaction)
             request_money = RequestMoney(
                 transaction_id=transaction.transaction_id,
                 requestees_phone_email=recipient,
-                amount=amount,
-                memo=memo,
                 expiration_date=expiration_date,
                 isNewUser=is_new_user
             )
             db.session.add(request_money)
-        
+
         db.session.commit()
-        flash("Money requests sent successfully!", "success")
-        return redirect(url_for('dashboard'))  # Replace 'dashboard' with your app's main page
-    
+        flash(f"Money requests for ${total_requested} sent successfully!", "success")
+        return redirect(url_for('index'))  # Redirect to another page after successful request
+
     return render_template('request_money.html')
+
 
 # Verify Bank Account route
 @app.route('/verify_bank_account/<int:bank_id>', methods=['POST'])
