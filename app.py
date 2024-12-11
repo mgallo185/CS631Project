@@ -713,109 +713,82 @@ def search_transactions():
 
     transactions = transactions.all()  # Execute the query
     return render_template('search_transactions.html', transactions=transactions)
-
 @app.route('/statements', methods=['GET', 'POST'])
 @login_required
 def statements():
     if request.method == 'POST':
-        # Get user input
-        user_ssn = request.form.get('ssn')  # User's SSN entered in the form
-        start_date = request.form.get('start_date')  # Start date for the range
-        end_date = request.form.get('end_date')  # End date for the range
-        
-        # Log for debugging
-        print(f"Received SSN: {user_ssn}, Start Date: {start_date}, End Date: {end_date}")
+        user_ssn = request.form.get('ssn')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
 
-        # Check if the dates are valid
-        if start_date and end_date:
+        # Convert date inputs to datetime objects
+        if start_date:
             start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        if end_date:
             end_date = datetime.strptime(end_date, '%Y-%m-%d')
-        elif not start_date and not end_date:
-            start_date = end_date = None  # Allow no date filter
-        else:
-            # Handle cases where only one date is provided
-            start_date = datetime.strptime(start_date, '%Y-%m-%d') if start_date else None
-            end_date = datetime.strptime(end_date, '%Y-%m-%d') if end_date else None
 
-        # Query for total amount of money sent and received by the user
-        total_sent_query = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.sender_wallet_id_ssn == user_ssn
-        )
-        
-        total_received_query = db.session.query(func.sum(Transaction.amount)).filter(
-            Transaction.receiver_wallet_id_ssn == user_ssn
-        )
-        
-        # Apply date filter if dates are provided
+        # Query for total and average amount sent/received grouped by month
+        sent_by_month_query = db.session.query(
+            func.date_format(Transaction.initiation_timestamp, '%Y-%m').label('month'),
+            func.sum(Transaction.amount).label('total_sent'),
+            func.avg(Transaction.amount).label('avg_sent')
+        ).filter(Transaction.sender_wallet_id_ssn == user_ssn)
+
+        received_by_month_query = db.session.query(
+            func.date_format(Transaction.initiation_timestamp, '%Y-%m').label('month'),
+            func.sum(Transaction.amount).label('total_received'),
+            func.avg(Transaction.amount).label('avg_received')
+        ).filter(Transaction.receiver_wallet_id_ssn == user_ssn)
+
+        # Apply date filters
         if start_date and end_date:
-            total_sent_query = total_sent_query.filter(Transaction.initiation_timestamp.between(start_date, end_date))
-            total_received_query = total_received_query.filter(Transaction.initiation_timestamp.between(start_date, end_date))
+            sent_by_month_query = sent_by_month_query.filter(
+                Transaction.initiation_timestamp.between(start_date, end_date)
+            )
+            received_by_month_query = received_by_month_query.filter(
+                Transaction.initiation_timestamp.between(start_date, end_date)
+            )
 
-        total_sent = total_sent_query.scalar()
-        total_received = total_received_query.scalar()
+        # Group by month and execute queries
+        sent_by_month = sent_by_month_query.group_by('month').all()
+        received_by_month = received_by_month_query.group_by('month').all()
 
-        # Handle no transactions case
-        if not total_sent:
-            total_sent = 0
-        if not total_received:
-            total_received = 0
-
-        # Calculate the number of months in the date range (if both start and end dates are provided)
-        if start_date and end_date:
-            months_diff = (end_date.year - start_date.year) * 12 + end_date.month - start_date.month
-            if months_diff == 0:  # If the range is less than a month, consider it as 1 month
-                months_diff = 1
-        else:
-            months_diff = 1  # Default to 1 month if no date range is specified
-
-        # Calculate average sent and received per month
-        avg_sent_per_month = total_sent / months_diff if months_diff else 0
-        avg_received_per_month = total_received / months_diff if months_diff else 0
-
-        # Query for transactions with the maximum amount of money per month
-        max_transactions_query = db.session.query(Transaction).filter(
-            Transaction.initiation_timestamp.between(start_date, end_date) if start_date and end_date else True
-        ).order_by(Transaction.amount.desc()).first()
-
-        if not max_transactions_query:
-            max_transactions_query = {'transaction_id': 'N/A', 'amount': 'N/A', 'initiation_timestamp': 'N/A'}
-        else:
-            max_transactions_query = {
-                'transaction_id': max_transactions_query.transaction_id,
-                'amount': max_transactions_query.amount,
-                'initiation_timestamp': max_transactions_query.initiation_timestamp
+        # Combine results by month for easier display
+        combined_results = {}
+        for record in sent_by_month:
+            month = record[0]
+            combined_results[month] = {
+                'total_sent': record[1],
+                'avg_sent': record[2],
+                'total_received': 0,
+                'avg_received': 0
             }
 
-        # Query for the best users by total money sent/received
-        best_users_sent = db.session.query(
-            WalletAccount.SSN,
-            func.sum(Transaction.amount).label('total_sent')
-        ).join(Transaction, Transaction.sender_wallet_id_ssn == WalletAccount.SSN).group_by(
-            WalletAccount.SSN).order_by(func.sum(Transaction.amount).desc()).limit(5).all()
+        for record in received_by_month:
+            month = record[0]
+            if month not in combined_results:
+                combined_results[month] = {
+                    'total_sent': 0,
+                    'avg_sent': 0,
+                    'total_received': record[1],
+                    'avg_received': record[2]
+                }
+            else:
+                combined_results[month]['total_received'] = record[1]
+                combined_results[month]['avg_received'] = record[2]
 
-        best_users_received = db.session.query(
-            WalletAccount.SSN,
-            func.sum(Transaction.amount).label('total_received')
-        ).join(Transaction, Transaction.receiver_wallet_id_ssn == WalletAccount.SSN).group_by(
-            WalletAccount.SSN).order_by(func.sum(Transaction.amount).desc()).limit(5).all()
+        # Sort results by month
+        sorted_results = sorted(combined_results.items(), key=lambda x: x[0])
 
-        # Render the template with all the data
-        return render_template('statements.html', total_sent=total_sent, total_received=total_received,
-                               avg_sent_per_month=avg_sent_per_month, avg_received_per_month=avg_received_per_month,
-                               max_transactions=max_transactions_query, best_users_sent=best_users_sent,
-                               best_users_received=best_users_received)
+        # Render results
+        return render_template(
+            'statements.html',
+            user_ssn=user_ssn,
+            results=sorted_results
+        )
 
-    # Handle GET request: Render blank form or previous data
+    # Render the blank form for GET requests
     return render_template('statements.html')
-
-
-
-
-
-
-
-
-
-
 if __name__ == '__main__':
     app.run(debug=True)
+
