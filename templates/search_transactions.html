@@ -43,6 +43,7 @@
                 <th>Amount</th>
                 <th>Status</th>
                 <th>Date</th>
+                <th>Type</th>
             </tr>
         </thead>
         <tbody>
@@ -54,6 +55,13 @@
                 <td>{{ transaction.amount }}</td>
                 <td>{{ transaction.status }}</td>
                 <td>{{ transaction.initiation_timestamp }}</td>
+                <td>
+                    {% if transaction.sender_wallet_id_ssn == current_user.SSN %}
+                        Sent
+                    {% else %}
+                        Received
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>
