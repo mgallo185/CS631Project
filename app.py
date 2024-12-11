@@ -657,7 +657,6 @@ def transfer_money_to_wallet():
     return render_template('profile.html')
 
 
-
 @app.route('/search_transactions', methods=['GET', 'POST'])
 @login_required
 def search_transactions():
@@ -675,6 +674,7 @@ def search_transactions():
         amount_min = request.form.get('amount_min')
         amount_max = request.form.get('amount_max')
         search_email_phone = request.form.get('email_phone')  # Email or phone input
+        ssn_search = request.form.get('ssn_search')  # SSN search input
 
         # Filter by transaction type
         if transaction_type:
@@ -703,7 +703,14 @@ def search_transactions():
                                            (User.phone.like(f'%{search_email_phone}%')) | 
                                            (Email.email_address.like(f'%{search_email_phone}%'))
                                        )
-    
+        
+        # Filter by SSN
+        if ssn_search:
+            transactions = transactions.filter(
+                (Transaction.sender_wallet_id_ssn == ssn_search) | 
+                (Transaction.receiver_wallet_id_ssn == ssn_search)
+            )
+
     transactions = transactions.all()  # Execute the query
     return render_template('search_transactions.html', transactions=transactions)
 
