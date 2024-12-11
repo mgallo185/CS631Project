@@ -82,33 +82,89 @@
     <div class="container mt-5">
         <h4>Manage Bank Accounts</h4>
         
-        <table class="table table-bordered mt-3">
+        <table class="table">
             <thead>
                 <tr>
                     <th>Bank ID</th>
                     <th>Account Number</th>
                     <th>Balance</th>
+                    <th>Verification Status</th>
                     <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
                 {% for account in current_user.bank_accounts %}
-                <tr>
-                    <td>{{ account.bank_id }}</td>
-                    <td>{{ account.account_number }}</td>
-                    <td>{{ account.balance }}</td>
-                    <td>
-                        <!-- Add a POST form for removing the bank account -->
-                        <form method="POST" action="{{ url_for('remove_bank_account') }}" style="display:inline;">
-                            <input type="hidden" name="bank_id" value="{{ account.bank_id }}">
-                            <input type="hidden" name="account_number" value="{{ account.account_number }}">
-                            <button type="submit" class="btn btn-danger btn-sm">Remove</button>
-                        </form>
-                    </td>
-                </tr>
+                    <tr>
+                        <td>{{ account.bank_id }}</td>
+                        <td>{{ account.account_number }}</td>
+                        <td>{{ account.balance }}</td>
+                        
+                        <!-- Verification Status Column -->
+                        <td>
+                            {% if account.isVerified %}
+                                <span class="badge bg-success">Verified</span>
+                            {% else %}
+                                <span class="badge bg-warning">Unverified</span>
+                            {% endif %}
+                        </td>
+        
+                        <!-- Actions Column -->
+                        <td>
+                            <!-- Button for verification if account is unverified -->
+                            {% if not account.isVerified %}
+                                <form method="POST" action="{{ url_for('verify_bank_account', bank_id=account.bank_id) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-primary btn-sm">Verify</button>
+                                </form>
+                            {% endif %}
+        
+                            <!-- Add a POST form for removing the bank account -->
+                            <form method="POST" action="{{ url_for('remove_bank_account') }}" style="display:inline;">
+                                <input type="hidden" name="bank_id" value="{{ account.bank_id }}">
+                                <input type="hidden" name="account_number" value="{{ account.account_number }}">
+                                <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                            </form>
+                        </td>
+                    </tr>
                 {% endfor %}
             </tbody>
         </table>
+        
+        <div class="container mt-5">
+            <h4>Transfer Money from Bank Account to Wallet</h4>
+        
+            <!-- Transfer Money Form -->
+            <form method="POST" action="{{ url_for('transfer_money_to_wallet') }}">
+                <div class="form-group">
+                    <label for="from_account">From Bank Account</label>
+                    <select name="from_account" class="form-control" required>
+                        <option value="" disabled selected>Select a Verified Bank Account</option>
+                        {% for account in current_user.bank_accounts %}
+                            {% if account.isVerified %}
+                                <option value="{{ account.bank_id }}">{{ account.account_number }} (Balance: {{ account.balance }})</option>
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="amount">Amount</label>
+                    <input type="number" name="amount" class="form-control" placeholder="Enter amount to transfer" required>
+                </div>
+                <div class="form-group">
+                    <label for="wallet_account">Wallet Account</label>
+                    <select name="wallet_account" class="form-control" required>
+                        <option value="" disabled selected>Select Your Wallet Account</option>
+                        {% for wallet in current_user.wallet_accounts %}
+                            <option value="{{ wallet.wallet_id }}">{{ wallet.wallet_number }} (Balance: {{ wallet.balance }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-success">Transfer Money</button>
+            </form>
+        </div>
+        
+        <hr>
+        
+      
     
         <a href="{{ url_for('add_bank_account') }}" class="btn btn-primary mt-3">Add Bank Account</a>
         <a href="{{ url_for('index') }}" class="btn btn-secondary mt-3">Back to Home</a>

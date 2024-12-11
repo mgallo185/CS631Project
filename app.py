@@ -4,6 +4,7 @@ from flask_login import LoginManager, UserMixin, login_user, login_required, log
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 
+from decimal import Decimal
 
 
 
@@ -475,6 +476,103 @@ def request_money():
     
     return render_template('request_money.html')
 
+# Verify Bank Account route
+@app.route('/verify_bank_account/<int:bank_id>', methods=['POST'])
+@login_required
+def verify_bank_account(bank_id):
+    # Retrieve the bank account
+    bank_account = BankAccount.query.filter_by(id=bank_id, user_id=current_user.id).first()
+
+    # Check if the bank account exists
+    if not bank_account:
+        flash('Bank account not found!', 'danger')
+        return redirect(url_for('profile'))  # Redirect to profile or any other appropriate page
+
+    # Add $10 to the bank account for verification
+    bank_account.balance += 10  # Add $10 to the bank account
+
+    # Mark the bank account as verified
+    bank_account.isVerified = True  # Set the verification status to True
+
+    try:
+        # Commit changes to the database
+        db.session.commit()
+        flash('Bank account verified and $10 added!', 'success')
+    except Exception as e:
+        db.session.rollback()  # Rollback in case of error
+        flash('An error occurred. Please try again later.', 'danger')
+
+    return redirect(url_for('profile'))
+
+
+@app.route('/transfer_money_to_wallet', methods=['GET', 'POST'])
+@login_required
+def transfer_money_to_wallet():
+    if request.method == 'POST':
+        # Get form data
+        wallet_id = request.form.get('wallet_account')  # Wallet ID where money will go
+        amount = request.form.get('amount')  # Amount user wants to transfer
+        
+        # Validate form data
+        if not wallet_id or not amount:
+            flash('Please provide both wallet account and amount.', 'error')
+            return redirect(url_for('transfer_money_to_wallet'))  # Reload the page if form is incomplete
+
+        try:
+            # Convert the amount to Decimal for precision
+            amount = Decimal(amount)
+        except:
+            flash('Invalid amount. Please enter a valid number.', 'error')
+            return redirect(url_for('transfer_money_to_wallet'))
+
+        # Find the user's bank account
+        bank_account = BankAccount.query.filter_by(ssn=current_user.SSN, isVerified=True).first()
+        
+        if not bank_account:
+            flash('No verified bank account found.', 'error')
+            return redirect(url_for('transfer_money_to_wallet'))
+
+        # Ensure bank_account.balance is also a Decimal
+        bank_balance = Decimal(bank_account.balance)
+
+        # Check if the bank account has enough balance
+        if bank_balance < amount:
+            flash('Insufficient funds in your bank account.', 'error')
+            return redirect(url_for('transfer_money_to_wallet'))
+
+        # Find the wallet account
+        wallet_account = WalletAccount.query.filter_by(wallet_id=wallet_id, SSN=current_user.SSN).first()
+        
+        if not wallet_account:
+            flash('Wallet account not found.', 'error')
+            return redirect(url_for('transfer_money_to_wallet'))
+
+        # Perform the transfer
+        bank_account.balance = str(bank_balance - amount)  # Deduct the amount from the bank account
+        wallet_account.balance = str(Decimal(wallet_account.balance) + amount)  # Add the amount to the wallet account
+
+        # Create a TransferHistory record
+        transfer = TransferHistory(
+            bank_id=bank_account.bank_id,
+            account_number=bank_account.account_number,
+            wallet_id=wallet_account.wallet_id,
+            SSN=current_user.SSN,
+            amount=amount,
+            wallet_to_bank=False,  # False means money is going to the wallet
+            Time_Initiated=datetime.now(),
+            status='Completed'  # You could also use 'Pending' here if you need it
+        )
+        
+        # Save everything to the database
+        db.session.add(transfer)
+        db.session.commit()
+
+        # Success message and redirect
+        flash('Transfer completed successfully!', 'success')
+        return redirect(url_for('transfer_money_to_wallet'))  # Reload the page after transfer
+
+    # If it's a GET request, render the page with the form
+    return render_template('profile.html')
 
 if __name__ == '__main__':
     app.run(debug=True)
