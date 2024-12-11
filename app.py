@@ -2,7 +2,7 @@ from flask import Flask, render_template, redirect, url_for, request, flash, ses
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import jsonify
 from decimal import Decimal
 from sqlalchemy import func
@@ -120,7 +120,7 @@ class Transaction(db.Model):
     completion_timestamp = db.Column(db.DateTime)
     amount = db.Column(db.Numeric(10, 2))
     memo = db.Column(db.Text)
-    status = db.Column(db.String(20))
+    status = db.Column(db.String(50))
 
     sender_wallet = db.relationship('WalletAccount', foreign_keys=[sender_wallet_id_ssn], backref='sent_transactions')
     receiver_wallet = db.relationship('WalletAccount', foreign_keys=[receiver_wallet_id_ssn], backref='received_transactions')
@@ -153,13 +153,26 @@ with app.app_context():
 def index():
     wallet_balance = None  # Default to None if the user is not logged in
     wallet_account = None  # Default to None if the user is not logged in
+    transactions = []  # Default empty list for transactions
 
     if current_user.is_authenticated:
         # Fetch the wallet account for the logged-in user
         wallet_account = WalletAccount.query.filter_by(SSN=current_user.SSN).first()
         wallet_balance = wallet_account.balance if wallet_account else 0.00  # Default to 0.00 if no wallet exists
 
-    return render_template('index.html', wallet_balance=wallet_balance, wallet_account=wallet_account)
+        # Fetch transactions sent by the logged-in user
+        # Fetch the 3 most recent transactions for the current user
+        transactions = Transaction.query.filter_by(sender_wallet_id_ssn=current_user.SSN).order_by(Transaction.initiation_timestamp.desc()).limit(3).all()
+
+
+        # Calculate time difference for cancellation eligibility
+        now = datetime.now()
+        for transaction in transactions:
+            transaction.time_diff = now - transaction.initiation_timestamp
+            transaction.can_cancel = transaction.time_diff <= timedelta(minutes=10)  # 10 minutes window
+
+    return render_template('index.html', wallet_balance=wallet_balance, wallet_account=wallet_account, transactions=transactions)
+
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -376,10 +389,9 @@ def remove_bank_account():
 @login_required
 def send_money():
     if request.method == 'POST':
-        recipient_identifier = request.form['recipient']  # Can be email, phone, or wallet ID
-        amount = Decimal(request.form['amount'])  # Convert to Decimal for precise handling
+        recipient_identifier = request.form['recipient']
+        amount = Decimal(request.form['amount'])
 
-        # Get sender wallet
         sender_wallet = WalletAccount.query.filter_by(SSN=current_user.SSN).first()
 
         if not sender_wallet:
@@ -390,15 +402,14 @@ def send_money():
             flash("Insufficient balance to complete the transaction.", "danger")
             return redirect(url_for('send_money'))
 
-        # Find recipient
         recipient_user = None
-        if '@' in recipient_identifier:  # Check if it's an email
+        if '@' in recipient_identifier:
             email_entry = Email.query.filter_by(email_address=recipient_identifier).first()
             if email_entry:
                 recipient_user = User.query.filter_by(SSN=email_entry.ssn).first()
-        elif recipient_identifier.isdigit():  # Assume phone number
+        elif recipient_identifier.isdigit():
             recipient_user = User.query.filter_by(phone=recipient_identifier).first()
-        else:  # Assume wallet ID
+        else:
             recipient_wallet = WalletAccount.query.filter_by(wallet_id=recipient_identifier).first()
             if recipient_wallet:
                 recipient_user = User.query.filter_by(SSN=recipient_wallet.SSN).first()
@@ -407,41 +418,36 @@ def send_money():
             flash("Recipient not found.", "danger")
             return redirect(url_for('send_money'))
 
-        # Get recipient wallet (already handled by the previous check)
         recipient_wallet = WalletAccount.query.filter_by(SSN=recipient_user.SSN).first()
 
-        # Perform transfer (debit sender wallet, credit recipient wallet)
         sender_wallet.balance -= amount
         recipient_wallet.balance += amount
 
-        # Create transaction log
         transaction = Transaction(
             sender_wallet_id_ssn=sender_wallet.SSN,
             receiver_wallet_id_ssn=recipient_wallet.SSN,
             initiation_timestamp=datetime.now(),
             amount=amount,
-            memo=request.form.get('memo', ''),  # Memo is optional
+            memo=request.form.get('memo', ''),
             status="Completed"
         )
         db.session.add(transaction)
         db.session.commit()
 
-        # Record the send_money transaction
         send_money_record = SendMoney(
-            transaction_id=transaction.transaction_id,  
+            transaction_id=transaction.transaction_id,
             recipient_phone_email=recipient_identifier,
             cancellation_reason=None,
             cancellation_timestamp=None
         )
-
         db.session.add(send_money_record)
+        db.session.commit()
 
-        # Create monthly statement for sender
         sender_statement = MonthlyStatement(
             wallet_id=sender_wallet.wallet_id,
             transaction_id=transaction.transaction_id,
             For_Month_Year=datetime.now(),
-            starting_balance=sender_wallet.balance + amount,  # Starting balance before transaction
+            starting_balance=sender_wallet.balance + amount,
             total_amount_sent=amount,
             total_amount_received=0,
             net_change=-amount,
@@ -449,12 +455,11 @@ def send_money():
         )
         db.session.add(sender_statement)
 
-        # Create monthly statement for recipient
         recipient_statement = MonthlyStatement(
             wallet_id=recipient_wallet.wallet_id,
             transaction_id=transaction.transaction_id,
             For_Month_Year=datetime.now(),
-            starting_balance=recipient_wallet.balance - amount,  # Starting balance before transaction
+            starting_balance=recipient_wallet.balance - amount,
             total_amount_sent=0,
             total_amount_received=amount,
             net_change=amount,
@@ -462,16 +467,19 @@ def send_money():
         )
         db.session.add(recipient_statement)
 
-        # Commit all changes
         try:
             db.session.commit()
+            # Update the transaction status to "Completed" and set the completion_timestamp
+            #transaction.status = "Completed"
+            #transaction.completion_timestamp = datetime.now()  # Set completion timestamp
+            #db.session.commit()
         except Exception as e:
-            db.session.rollback()  # Rollback on error
+            db.session.rollback()
             flash(f"Error processing transaction: {str(e)}", "danger")
             return redirect(url_for('send_money'))
 
         flash(f"Sent ${amount} to {recipient_identifier} successfully!", "success")
-        return redirect(url_for('index'))  # Redirect to dashboard or another relevant page
+        return redirect(url_for('index'))
 
     return render_template('send_money.html')
 
@@ -536,7 +544,7 @@ def request_money():
                 initiation_timestamp=datetime.now(),
                 amount=amount,
                 memo=memo,
-                status='Pending'  # The transaction is pending until the recipient accepts or declines
+                status='Request' 
             )
             db.session.add(transaction)
             db.session.commit()  # Commit to generate transaction_id
@@ -810,6 +818,44 @@ def statements():
 
 
 
+@app.route('/cancel_transaction/<int:transaction_id>', methods=['POST'])
+@login_required
+def cancel_transaction(transaction_id):
+    # Find the transaction
+    transaction = Transaction.query.get(transaction_id)
+
+    if not transaction:
+        flash("Transaction not found.", "danger")
+        return redirect(url_for('index'))
+
+    # Check if the transaction is within 10 minutes
+    # Check if the transaction is within 10 minutes
+    time_diff = datetime.now() - transaction.initiation_timestamp
+    if time_diff > timedelta(minutes=10):
+        flash("Transaction is beyond the cancellation window and cannot be canceled.", "danger")
+        return redirect(url_for('index'))
+
+
+    # Cancel the transaction logic here
+    transaction.status = "Cancelled"
+    transaction.cancellation_reason = "User canceled the transaction."
+    transaction.cancellation_timestamp = datetime.now()
+
+    sender_wallet = WalletAccount.query.filter_by(SSN=transaction.sender_wallet_id_ssn).first()
+    receiver_wallet = WalletAccount.query.filter_by(SSN=transaction.receiver_wallet_id_ssn).first()
+
+    sender_wallet.balance += transaction.amount
+    receiver_wallet.balance -= transaction.amount
+
+    send_money_record = SendMoney.query.filter_by(transaction_id=transaction.transaction_id).first()
+    if send_money_record:
+        send_money_record.cancellation_reason = transaction.cancellation_reason
+        send_money_record.cancellation_timestamp = transaction.cancellation_timestamp
+
+    db.session.commit()
+
+    flash("Transaction cancelled successfully.", "success")
+    return redirect(url_for('index'))
 
 
 
