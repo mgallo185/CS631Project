@@ -786,9 +786,64 @@ def statements():
             user_ssn=user_ssn,
             results=sorted_results
         )
+        
+        
+  
 
     # Render the blank form for GET requests
     return render_template('statements.html')
+
+
+
+@app.route('/bonus_statements', methods=['GET', 'POST'])
+@login_required
+def bonus_statements():
+    if request.method == 'POST':
+        user_ssn = request.form.get('ssn')
+        start_date = request.form.get('start_date')
+        end_date = request.form.get('end_date')
+        
+        # Convert date inputs to datetime objects
+        if start_date:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        if end_date:
+            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+
+        # Query for transactions with the maximum amount of money
+        max_transactions_query = db.session.query(Transaction).filter(
+            Transaction.initiation_timestamp.between(start_date, end_date) if start_date and end_date else True
+        ).order_by(Transaction.amount.desc()).first()
+
+        if not max_transactions_query:
+            max_transactions_query = {'transaction_id': 'N/A', 'amount': 'N/A', 'initiation_timestamp': 'N/A'}
+        else:
+            max_transactions_query = {
+                'transaction_id': max_transactions_query.transaction_id,
+                'amount': max_transactions_query.amount,
+                'initiation_timestamp': max_transactions_query.initiation_timestamp
+            }
+
+        # Query for the best users by total money sent/received
+        best_users_sent = db.session.query(
+            WalletAccount.SSN,
+            func.sum(Transaction.amount).label('total_sent')
+        ).join(Transaction, Transaction.sender_wallet_id_ssn == WalletAccount.SSN).group_by(
+            WalletAccount.SSN).order_by(func.sum(Transaction.amount).desc()).limit(5).all()
+
+        best_users_received = db.session.query(
+            WalletAccount.SSN,
+            func.sum(Transaction.amount).label('total_received')
+        ).join(Transaction, Transaction.receiver_wallet_id_ssn == WalletAccount.SSN).group_by(
+            WalletAccount.SSN).order_by(func.sum(Transaction.amount).desc()).limit(5).all()
+
+        # Render the template with the new data
+        return render_template('bonus_statements.html', 
+                               max_transactions=max_transactions_query, 
+                               best_users_sent=best_users_sent,
+                               best_users_received=best_users_received)
+
+    # Render the blank form for GET requests
+    return render_template('bonus_statements.html')
 if __name__ == '__main__':
     app.run(debug=True)
 
