@@ -52,19 +52,41 @@
                 <p><strong>Verified:</strong> {{ 'Yes' if wallet_account.isVerified else 'No' }}</p>
             </div>
 
-            <!-- Option to send money or request money -->
-            <div class="text-center mt-4">
-                <h3>What would you like to do?</h3>
-                <div class="d-flex justify-content-center mt-3">
-                    <a href="{{ url_for('send_money') }}" class="btn btn-primary mx-2">Send Money</a>
-                    <a href="{{ url_for('request_money') }}" class="btn btn-success mx-2">Request Money</a>
-                    <!-- Add this button to your existing index.html -->
-                    <a href="{{ url_for('search_transactions') }}" class="btn btn-primary">Search Transactions</a>
-                    <a href="{{ url_for('statements') }}" class="btn btn-primary">Monthly Statements</a>
-                    <a href="{{ url_for('bonus_statements') }}" class="btn btn-primary">Bonus Monthly Statements</a>
+     <!-- Option to send money or request money -->
+        <div class="text-center mt-4">
+            <h3>What would you like to do?</h3>
+            <div class="d-flex justify-content-center mt-3">
+                <a href="{{ url_for('send_money') }}" class="btn btn-primary mx-2">Send Money</a>
+                <a href="{{ url_for('request_money') }}" class="btn btn-success mx-2">Request Money</a>
+                <a href="{{ url_for('search_transactions') }}" class="btn btn-primary">Search Transactions</a>
+                <a href="{{ url_for('statements') }}" class="btn btn-primary">Monthly Statements</a>
+                <a href="{{ url_for('bonus_statements') }}" class="btn btn-primary">Bonus Monthly Statements</a>
+            </div>
+        </div> 
+            <!-- Display user transactions and cancel option -->
+            <div class="mt-4">
+                <h3>Your Recent Transactions</h3>
+                {% if transactions %}
+                    <div class="list-group">
+                        {% for transaction in transactions %}
+                            <div class="list-group-item">
+                                <p><strong>Transaction ID:</strong> {{ transaction.transaction_id }}</p>
+                                <p><strong>Status:</strong> {{ transaction.status }}</p>
+                                <p><strong>Amount:</strong> ${{ "%.2f"|format(transaction.amount) }}</p>
+                                <p><strong>Initiated at:</strong> {{ transaction.initiation_timestamp }}</p>
 
-
-                </div>
+                                {% if transaction.can_cancel and transaction.status == "Completed" %}
+                                    <!-- Button to cancel the transaction -->
+                                    <form action="{{ url_for('cancel_transaction', transaction_id=transaction.transaction_id) }}" method="POST">
+                                        <button type="submit" class="btn btn-danger btn-sm">Cancel Transaction</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>You have no transactions.</p>
+                {% endif %}
             </div>
 
         {% else %}
