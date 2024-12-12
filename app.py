@@ -788,15 +788,29 @@ def statements():
         # Sort results by month
         sorted_results = sorted(combined_results.items(), key=lambda x: x[0])
 
+        # Query for total amount sent and received in the date range
+        total_sent = db.session.query(
+            func.sum(Transaction.amount)
+        ).filter(
+            Transaction.sender_wallet_id_ssn == user_ssn,
+            Transaction.initiation_timestamp.between(start_date, end_date)
+        ).scalar()
+
+        total_received = db.session.query(
+            func.sum(Transaction.amount)
+        ).filter(
+            Transaction.receiver_wallet_id_ssn == user_ssn,
+            Transaction.initiation_timestamp.between(start_date, end_date)
+        ).scalar()
+
         # Render results
         return render_template(
             'statements.html',
             user_ssn=user_ssn,
-            results=sorted_results
+            results=sorted_results,
+            total_sent=total_sent,
+            total_received=total_received
         )
-        
-        
-  
 
     # Render the blank form for GET requests
     return render_template('statements.html')

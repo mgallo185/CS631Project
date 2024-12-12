@@ -32,6 +32,28 @@
             <div class="card-header">
                 <h3>Monthly Breakdown for {{ user_ssn }}</h3>
             </div>
+            
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Sent</h5>
+                                <p class="card-text">${{ "{:,.2f}".format(total_sent) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Total Received</h5>
+                                <p class="card-text">${{ "{:,.2f}".format(total_received) }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <table class="table table-striped">
                 <thead>
                     <tr>
